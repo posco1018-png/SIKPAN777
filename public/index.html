@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오늘 뭐 싸가?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* 레이아웃: 급식판처럼 칸이 나뉜 한 장짜리 화면. 위에서 아래로 검색 → 급식 → 싸갈 것 */
+  :root {
+    --bg: #e6ecef;
+    --tray: #f6f8f9;
+    --line: #c7d1d6;
+    --ink: #1c2830;
+    --muted: #5d6c76;
+    --accent: #f0b035;      /* 노란 포인트 */
+    --accent-ink: #3a2a00;
+    --pack: #2d8a68;        /* 싸갈 것 강조 */
+    --pack-bg: #dcefe7;
+    --danger: #b3412f;
+    --font-display: "Jua", "Noto Sans KR", sans-serif;
+    --font-body: "Noto Sans KR", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #11181c; --tray: #1b252b; --line: #34434c; --ink: #e8eef1; --muted: #97a7b0;
+      --accent: #f2b94d; --accent-ink: #2b1f00; --pack: #6fd0a8; --pack-bg: #1c3a2f; --danger: #ef8d7b;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #11181c; --tray: #1b252b; --line: #34434c; --ink: #e8eef1; --muted: #97a7b0;
+    --accent: #f2b94d; --accent-ink: #2b1f00; --pack: #6fd0a8; --pack-bg: #1c3a2f; --danger: #ef8d7b;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 var(--font-body);
+    padding-block: 32px 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  main { max-width: 640px; margin: 0 auto; display: grid; gap: 20px; }
+  [hidden] { display: none !important; }
+
+  header h1 { margin: 0; font: 400 clamp(2.2rem, 9vw, 3rem)/1.1 var(--font-display); letter-spacing: -0.01em; }
+  header h1 span { background: linear-gradient(transparent 62%, var(--accent) 62%); }
+  header p { margin: 8px 0 0; color: var(--muted); }
+
+  form { display: flex; gap: 8px; flex-wrap: wrap; }
+  input[type=text] {
+    flex: 1 1 220px; min-width: 0; padding: 14px 16px; font: inherit; color: var(--ink);
+    background: var(--tray); border: 2px solid var(--line); border-radius: 10px;
+  }
+  input[type=text]:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  button {
+    font: 700 1rem var(--font-body); padding: 14px 22px; border: 0; border-radius: 10px; cursor: pointer;
+    background: var(--accent); color: var(--accent-ink);
+  }
+  button:disabled { opacity: .6; cursor: progress; }
+  button.ghost { background: transparent; color: var(--muted); border: 2px solid var(--line); padding: 8px 14px; font-weight: 500; font-size: .875rem; }
+
+  .results { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .results button {
+    width: 100%; text-align: left; background: var(--tray); color: var(--ink);
+    border: 2px solid var(--line); font-weight: 500; padding: 12px 16px;
+  }
+  .results button:hover { border-color: var(--accent); }
+  .results small { display: block; color: var(--muted); font-weight: 400; }
+
+  .status { color: var(--muted); }
+  .status.error { color: var(--danger); font-weight: 500; }
+
+  .school-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .school-bar strong { font-size: 1.1rem; }
+  .school-bar .date { color: var(--muted); font-size: .9rem; }
+
+  /* 급식판 */
+  .tray {
+    background: var(--tray); border: 2px solid var(--line); border-radius: 22px; padding: 16px;
+    display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tray h2 { grid-column: 1 / -1; margin: 0 0 2px; font: 400 1.25rem var(--font-display); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .tray h2 small { font: 400 .85rem var(--font-body); color: var(--muted); align-self: center; }
+  .cell {
+    border: 2px solid var(--line); border-radius: 14px; padding: 14px 12px; min-height: 64px;
+    display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 500;
+    background: var(--bg); overflow-wrap: anywhere;
+  }
+  .cell:first-of-type { grid-column: 1 / -1; }
+
+  /* 싸갈 것 */
+  .pack { background: var(--pack-bg); border-radius: 22px; padding: 20px 18px; display: grid; gap: 14px; }
+  .pack h2 { margin: 0; font: 400 1.5rem/1.25 var(--font-display); color: var(--pack); }
+  .pack ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .pack li { background: var(--tray); border-radius: 12px; padding: 12px 14px; }
+  .pack li b { font-size: 1.05rem; }
+  .pack li p { margin: 2px 0 0; color: var(--muted); font-size: .9rem; }
+  .tip { margin: 0; font-size: .95rem; }
+  .src { margin: 0; color: var(--muted); font-size: .8rem; }
+
+  .skeleton { height: 120px; border-radius: 18px; background: var(--tray); border: 2px dashed var(--line); display: grid; place-items: center; color: var(--muted); }
+  @media (prefers-reduced-motion: no-preference) {
+    .skeleton { animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: .55; } }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span>오늘 뭐 싸가?</span></h1>
+    <p>학교 급식 메뉴를 보고, 집에서 뭘 싸가면 더 풍성하게 먹을 수 있는지 알려드려요.</p>
+  </header>
+
+  <form id="search" autocomplete="off">
+    <input id="q" type="text" placeholder="학교 이름 (예: 서울삼광초등학교)" aria-label="학교 이름" required minlength="2">
+    <button id="go" type="submit">찾기</button>
+  </form>
+
+  <ul id="results" class="results" hidden></ul>
+  <p id="status" class="status" role="status" hidden></p>
+
+  <section id="school" hidden>
+    <div class="school-bar">
+      <div><strong id="schoolName"></strong><div class="date" id="today"></div></div>
+      <button type="button" id="change" class="ghost">학교 바꾸기</button>
+    </div>
+  </section>
+
+  <section id="tray" class="tray" hidden>
+    <h2>오늘 급식 <small id="kcal"></small></h2>
+  </section>
+
+  <section id="pack" class="pack" hidden>
+    <h2 id="headline"></h2>
+    <ul id="items"></ul>
+    <p class="tip" id="tip"></p>
+    <p class="src" id="src"></p>
+  </section>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const KEY = "ocneul-mwo-ssaga:school";
+
+  const status = (msg, isError = false) => {
+    const el = $("status");
+    el.textContent = msg || "";
+    el.hidden = !msg;
+    el.classList.toggle("error", isError);
+  };
+
+  // 한국 시간 기준 오늘 날짜
+  function todayKST() {
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" })
+      .format(new Date()).split("-");
+    return parts.join("");
+  }
+  function labelKST() {
+    return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric", weekday: "long" }).format(new Date());
+  }
+
+  async function api(url, opts) {
+    const r = await fetch(url, opts);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || "문제가 생겼어요. 잠시 후 다시 시도해 주세요.");
+    return data;
+  }
+
+  function resetResults() {
+    $("tray").hidden = true; $("pack").hidden = true;
+    $("tray").querySelectorAll(".cell").forEach((c) => c.remove());
+  }
+
+  // 1) 학교 검색
+  $("search").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const q = $("q").value.trim();
+    if (q.length < 2) return;
+    $("go").disabled = true;
+    $("results").hidden = true;
+    status("학교를 찾고 있어요…");
+    try {
+      const { schools } = await api("/api/schools?q=" + encodeURIComponent(q));
+      if (!schools.length) { status("검색 결과가 없어요. 학교 이름을 정확히 입력했는지 확인해 주세요.", true); return; }
+      if (schools.length === 1) { status(""); pick(schools[0]); return; }
+      status("");
+      const ul = $("results");
+      ul.replaceChildren();
+      for (const s of schools) {
+        const li = document.createElement("li");
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = s.name;
+        const small = document.createElement("small");
+        small.textContent = [s.officeName, s.address].filter(Boolean).join(" · ");
+        b.appendChild(small);
+        b.addEventListener("click", () => { ul.hidden = true; pick(s); });
+        li.appendChild(b);
+        ul.appendChild(li);
+      }
+      ul.hidden = false;
+    } catch (err) {
+      status(err.message, true);
+    } finally {
+      $("go").disabled = false;
+    }
+  });
+
+  // 2) 학교 선택 → 급식 → 추천
+  async function pick(school) {
+    try { localStorage.setItem(KEY, JSON.stringify(school)); } catch {}
+    $("search").hidden = true;
+    $("schoolName").textContent = school.name;
+    $("today").textContent = labelKST();
+    $("school").hidden = false;
+    resetResults();
+    status("오늘 급식을 불러오고 있어요…");
+    try {
+      const { meal } = await api(`/api/meal?office=${school.office}&code=${school.code}&date=${todayKST()}`);
+      if (!meal || !meal.menu.length) { status("오늘은 급식 정보가 없어요. 주말이거나 급식이 없는 날일 수 있어요."); return; }
+      showTray(meal);
+      status("");
+      const sk = document.createElement("div");
+      sk.className = "skeleton"; sk.id = "sk"; sk.textContent = "뭘 싸가면 좋을지 생각 중…";
+      $("pack").before(sk);
+      try {
+        const rec = await api("/api/recommend", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ menu: meal.menu }) });
+        showPack(rec);
+      } finally { sk.remove(); }
+    } catch (err) {
+      status(err.message, true);
+    }
+  }
+
+  function showTray(meal) {
+    const tray = $("tray");
+    $("kcal").textContent = meal.kcal || "";
+    for (const m of meal.menu) {
+      const d = document.createElement("div");
+      d.className = "cell";
+      d.textContent = m;
+      tray.appendChild(d);
+    }
+    tray.hidden = false;
+  }
+
+  function showPack(rec) {
+    $("headline").textContent = rec.headline || "이런 걸 싸가면 좋아요";
+    const ul = $("items");
+    ul.replaceChildren();
+    for (const it of rec.items) {
+      const li = document.createElement("li");
+      const b = document.createElement("b");
+      b.textContent = it.name;
+      li.appendChild(b);
+      if (it.why) { const p = document.createElement("p"); p.textContent = it.why; li.appendChild(p); }
+      ul.appendChild(li);
+    }
+    $("tip").textContent = rec.tip || "";
+    $("src").textContent = rec.source === "ai" ? "AI가 오늘 메뉴를 보고 추천했어요." : "기본 추천이에요. 서버에 AI 키를 설정하면 메뉴에 맞춘 추천을 받을 수 있어요.";
+    $("pack").hidden = false;
+  }
+
+  $("change").addEventListener("click", () => {
+    try { localStorage.removeItem(KEY); } catch {}
+    resetResults(); status("");
+    $("school").hidden = true; $("search").hidden = false; $("q").value = ""; $("q").focus();
+  });
+
+  // 지난번에 고른 학교가 있으면 바로 불러오기
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (saved && saved.office && saved.code) pick(saved);
+  } catch {}
+})();
+</script>
+</body>
+</html>
