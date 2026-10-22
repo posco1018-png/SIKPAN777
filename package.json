@@ -1,0 +1,12 @@
+{
+  "name": "what-to-pack",
+  "version": "1.0.0",
+  "description": "오늘 뭐 싸가? - 학교 급식에 곁들일 집 반찬 추천 서비스",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
